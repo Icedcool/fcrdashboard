@@ -1,12 +1,9 @@
 // GET /api/v1/summary
-// Returns current FCR adoption summary.
-
-import { beaconGet } from '../lib/beacon.js'
-import { xatuQuery } from '../lib/xatu.js'
+import { beaconGet, decodeGraffiti, classifyClient } from '../lib/beacon.js'
 
 const FCR_CLIENTS = ['Lodestar', 'Lighthouse']
 const ESTIMATED_TOTAL_VALIDATORS = 560000
-
+const CLIENT_ORDER = ['Lodestar', 'Lighthouse', 'Prysm', 'Teku', 'Nimbus']
 const CLIENT_META = {
   Lodestar:   { version: 'v1.28.0', fcrEnabled: true,  status: 'LIVE' },
   Lighthouse: { version: 'v7.1.0',  fcrEnabled: true,  status: 'LIVE' },
@@ -15,84 +12,59 @@ const CLIENT_META = {
   Nimbus:     { version: 'v25.3.0', fcrEnabled: false, status: 'DEV'  },
 }
 
-const CLIENT_ORDER = ['Lodestar', 'Lighthouse', 'Prysm', 'Teku', 'Nimbus']
-
 let staleCache = null
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 's-maxage=12, stale-while-revalidate=6')
   res.setHeader('Access-Control-Allow-Origin', '*')
   try {
-    const [head, blockData, clientRows, attestRows] = await Promise.all([
-      beaconGet('/eth/v1/beacon/headers/head'),
-      beaconGet('/eth/v2/beacon/blocks/head'),
-      xatuQuery(`
-        SELECT
-          multiIf(
-            graffiti_text LIKE '%Lodestar%', 'Lodestar',
-            graffiti_text LIKE '%Lighthouse%', 'Lighthouse',
-            graffiti_text LIKE '%rysm%', 'Prysm',
-            graffiti_text LIKE '%eku%', 'Teku',
-            graffiti_text LIKE '%imbus%', 'Nimbus',
-            'Unknown'
-          ) AS client_name,
-          count() AS block_count
-        FROM default.canonical_beacon_block
-        WHERE slot_start_date_time >= now() - INTERVAL 1 DAY
-        GROUP BY client_name
-      `),
-      xatuQuery(`
-        SELECT avg(toFloat64(attestations_count) / 128.0 * 100.0) AS avg_attest_pct
-        FROM default.canonical_beacon_block
-        WHERE slot_start_date_time >= now() - INTERVAL 1 HOUR
-      `).catch(() => []),
-    ])
+    const headData = await beaconGet('/eth/v1/beacon/headers/head')
+    const headSlot = parseInt(headData.data.header.message.slot)
 
-    const slot = parseInt(head.data.header.message.slot)
+    // Fetch last 20 blocks in parallel for graffiti-based client distribution
+    const rawBlocks = await Promise.all(
+      Array.from({ length: 20 }, (_, i) =>
+        beaconGet(`/eth/v2/beacon/blocks/${headSlot - i}`).catch(() => null)
+      )
+    )
+    const blocks = rawBlocks.filter(Boolean)
+    const headBlock = blocks[0]
+
+    const ep = headBlock?.data.message.body.execution_payload
+    const slot = headSlot
     const epoch = Math.floor(slot / 32)
+    const blockHash = ep?.block_hash ?? '0x'
+    const blockNumber = ep ? parseInt(ep.block_number) : 0
 
-    const ep = blockData.data.message.body.execution_payload
-    const blockHash = ep.block_hash
-    const blockNumber = parseInt(ep.block_number)
+    // Count client occurrences from graffiti
+    const counts = Object.fromEntries(CLIENT_ORDER.map(c => [c, 0]))
+    for (const block of blocks) {
+      const client = classifyClient(decodeGraffiti(block.data.message.body.graffiti))
+      if (client && counts[client] !== undefined) counts[client]++
+    }
 
-    const totalBlocks = clientRows.reduce((s, r) => s + parseInt(r.block_count), 0) || 1
-    const clientMap = Object.fromEntries(clientRows.map(r => [r.client_name, r]))
-
+    const totalSampled = blocks.length || 1
     const clients = CLIENT_ORDER.map(name => {
-      const meta = CLIENT_META[name]
-      const count = parseInt(clientMap[name]?.block_count || '0')
-      const pctOfSet = parseFloat(((count / totalBlocks) * 100).toFixed(1))
-      const validators = Math.round((count / totalBlocks) * ESTIMATED_TOTAL_VALIDATORS)
-      return { name, ...meta, validators, pctOfSet }
+      const count = counts[name]
+      const pctOfSet = parseFloat((count / totalSampled * 100).toFixed(1))
+      const validators = Math.round((count / totalSampled) * ESTIMATED_TOTAL_VALIDATORS)
+      return { name, ...CLIENT_META[name], validators, pctOfSet }
     })
 
     const fcrValidators = clients
       .filter(c => FCR_CLIENTS.includes(c.name))
       .reduce((s, c) => s + c.validators, 0)
 
-    const adoptionPct = parseFloat(((fcrValidators / ESTIMATED_TOTAL_VALIDATORS) * 100).toFixed(1))
-
-    const rawAttest = attestRows.length > 0 ? parseFloat(attestRows[0].avg_attest_pct) : null
-    const attestationPct = rawAttest != null && !isNaN(rawAttest)
-      ? parseFloat(Math.min(100, rawAttest).toFixed(1))
-      : adoptionPct
-
+    const adoptionPct = parseFloat((fcrValidators / ESTIMATED_TOTAL_VALIDATORS * 100).toFixed(1))
+    const attestationPct = adoptionPct
     const thresholdMet = attestationPct >= 75
     const syncHealth = attestationPct >= 95 ? 'NOMINAL' : attestationPct >= 75 ? 'DEGRADED' : 'UNSAFE'
-
-    const missedSlots24h = Math.max(0, 7200 - totalBlocks)
+    const missedSlots24h = rawBlocks.filter(b => b === null).length
 
     const result = {
-      slot,
-      epoch,
-      blockHash,
-      blockNumber,
-      adoptionPct,
-      fcrValidators,
-      totalValidators: ESTIMATED_TOTAL_VALIDATORS,
-      attestationPct,
-      thresholdMet,
-      syncHealth,
+      slot, epoch, blockHash, blockNumber,
+      adoptionPct, fcrValidators, totalValidators: ESTIMATED_TOTAL_VALIDATORS,
+      attestationPct, thresholdMet, syncHealth,
       slotTime: Date.now(),
       confirmationMs: 13100,
       clients,
