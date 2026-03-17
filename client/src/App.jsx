@@ -70,6 +70,10 @@ export default function App() {
 
   return (
     <>
+      <div className="dev-banner">
+        [ β ] IN DEVELOPMENT — data is experimental and may be inaccurate
+      </div>
+
       {showExplainer && <FcrExplainer onClose={dismissExplainer} />}
 
       <div style={{ padding: '0 0 4px' }}>
