@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import Tooltip from './Tooltip.jsx'
 
 function slotColor(status) {
   if (status === 'FAST_CONFIRMED') return 'var(--green)'
@@ -34,7 +35,7 @@ export default function SlotStream({ slots = [], onExportRef }) {
   return (
     <div className="section border-box">
       <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>SLOT STREAM</span>
+        <span>SLOT STREAM <Tooltip text={"FAST_CONFIRMED — ≥75% of validators attested within this slot. Single-slot confirmation achieved (~13s).\n\nFINALIZED — Block is in the canonical chain but FCR threshold was not met. Finalizes after 2 epochs (~13 min).\n\nMISSED — No block was produced for this slot. The assigned proposer was offline or too slow."} /></span>
         <button className="btn" style={{ fontSize: '0.7rem' }} onClick={() => exportCsv(slots)}>[EXPORT CSV]</button>
       </div>
       <div className="slot-stream">

@@ -1,12 +1,13 @@
 import { useState } from 'react'
+import Tooltip from './Tooltip.jsx'
 
 const COLS = [
-  { key: 'name',       label: 'CLIENT'      },
-  { key: 'version',    label: 'VERSION'     },
-  { key: 'fcrEnabled', label: 'FCR SUPPORT' },
-  { key: 'validators', label: 'VALIDATORS'  },
-  { key: 'pctOfSet',   label: '% OF SET'    },
-  { key: 'status',     label: 'STATUS'      },
+  { key: 'name',       label: 'CLIENT',      tip: null },
+  { key: 'version',    label: 'VERSION',     tip: null },
+  { key: 'fcrEnabled', label: 'FCR SUPPORT', tip: 'Whether this client has the Fast Confirmation Rule enabled. Detected from block proposer graffiti strings in recent beacon blocks.' },
+  { key: 'validators', label: 'VALIDATORS',  tip: 'Estimated validator count for this client, derived from its share of recently proposed blocks. Based on ~560k total active validators.' },
+  { key: 'pctOfSet',   label: '% OF SET',    tip: 'Share of the total active validator set running this client. FCR activates when the combined % of FCR-enabled clients exceeds 75%.' },
+  { key: 'status',     label: 'STATUS',      tip: 'LIVE — FCR is enabled in the current production release. DEV — FCR is in development or behind a feature flag, not yet activated by default.' },
 ]
 
 function statusColor(s) {
@@ -50,7 +51,7 @@ export default function ClientTable({ clients = [] }) {
                   onClick={() => handleSort(col.key)}
                   className={sortKey === col.key ? 'sort-active' : ''}
                 >
-                  {col.label}
+                  {col.label}{col.tip && <Tooltip text={col.tip} />}
                   <span className="sort-arrow">
                     {sortKey === col.key ? (sortDir === -1 ? '↓' : '↑') : '↕'}
                   </span>

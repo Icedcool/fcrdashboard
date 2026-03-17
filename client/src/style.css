@@ -75,6 +75,20 @@ body.crt {
 a { color: var(--green-dim); text-decoration: none; }
 a:hover { color: var(--green); }
 
+/* ── Tooltip ── */
+.tooltip-trigger {
+  color: var(--green-dim);
+  font-size: 0.68rem;
+  cursor: help;
+  user-select: none;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+.tooltip-trigger:hover {
+  color: var(--green);
+  opacity: 1;
+}
+
 /* ── Terminal button ── */
 .btn {
   display: inline-block;
