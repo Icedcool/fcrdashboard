@@ -89,6 +89,18 @@ a:hover { color: var(--green); }
   opacity: 1;
 }
 
+/* ── Dev banner ── */
+.dev-banner {
+  width: 100%;
+  background: rgba(255, 183, 0, 0.08);
+  border-bottom: 1px solid var(--amber);
+  color: var(--amber);
+  font-size: 0.72rem;
+  text-align: center;
+  padding: 5px 12px;
+  letter-spacing: 0.08em;
+}
+
 /* ── Terminal button ── */
 .btn {
   display: inline-block;

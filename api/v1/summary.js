@@ -1,5 +1,5 @@
 // GET /api/v1/summary
-import { beaconGet, decodeGraffiti, classifyClient } from '../lib/beacon.js'
+import { beaconGet, decodeGraffiti, classifyClient, GENESIS_TIME_MS } from '../lib/beacon.js'
 
 const FCR_CLIENTS = ['Lodestar', 'Lighthouse']
 const ESTIMATED_TOTAL_VALIDATORS = 560000
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
       slot, epoch, blockHash, blockNumber,
       adoptionPct, fcrValidators, totalValidators: ESTIMATED_TOTAL_VALIDATORS,
       attestationPct, thresholdMet, syncHealth,
-      slotTime: Date.now(),
+      slotTime: GENESIS_TIME_MS + slot * 12000,
       confirmationMs: 13100,
       clients,
       network: {
