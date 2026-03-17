@@ -1,13 +1,24 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 export default function Tooltip({ text, align = 'left' }) {
   const [visible, setVisible] = useState(false)
+  const [above, setAbove] = useState(true)
+  const ref = useRef(null)
+
+  function handleEnter() {
+    if (ref.current) {
+      setAbove(ref.current.getBoundingClientRect().top >= 150)
+    }
+    setVisible(true)
+  }
 
   const boxStyle = {
     position: 'absolute',
-    bottom: 'calc(100% + 6px)',
+    ...(above
+      ? { bottom: 'calc(100% + 6px)' }
+      : { top:    'calc(100% + 6px)' }),
     zIndex: 200,
-    background: '#0a0a0a',
+    background: 'var(--bg-panel)',
     border: '1px solid var(--green-dim)',
     padding: '8px 10px',
     fontSize: '0.72rem',
@@ -22,8 +33,9 @@ export default function Tooltip({ text, align = 'left' }) {
 
   return (
     <span
+      ref={ref}
       style={{ position: 'relative', display: 'inline-block', verticalAlign: 'middle' }}
-      onMouseEnter={() => setVisible(true)}
+      onMouseEnter={handleEnter}
       onMouseLeave={() => setVisible(false)}
     >
       <span className="tooltip-trigger">[?]</span>
