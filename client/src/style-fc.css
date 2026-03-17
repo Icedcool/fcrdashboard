@@ -1,0 +1,50 @@
+/* fastconfirm.it theme — additive overrides, only active when body.theme-fc is set */
+
+/* Default values for chart vars (terminal theme defaults) */
+:root {
+  --chart-grid: #1a1a1a;
+  --chart-area: rgba(0,255,65,0.04);
+}
+
+body.theme-fc {
+  /* Color palette */
+  --bg:          #f5f5e9;
+  --bg-panel:    #ffffff;
+  --green:       #f05f36;
+  --green-dim:   #c44d2b;
+  --green-faint: rgba(240,95,54,0.08);
+  --amber:       #e07b00;
+  --red:         #dc2626;
+  --cyan:        #0891b2;
+  --grey:        #6a6a6a;
+  --font:        system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --border:      1px solid #d8d5cc;
+
+  --chart-grid:  #e0ddd5;
+  --chart-area:  rgba(240,95,54,0.06);
+
+  color: #000;
+  background: var(--bg);
+}
+
+/* Rounded elements to match fastconfirm.it */
+body.theme-fc .tile,
+body.theme-fc .border-box,
+body.theme-fc .modal-box { border-radius: 8px; }
+body.theme-fc .btn        { border-radius: 6px; }
+
+/* Table row divider */
+body.theme-fc .data-table td       { border-bottom-color: #eeeadf; }
+body.theme-fc .data-table tfoot td { border-top-color: #d8d5cc; }
+
+/* Gauge track background */
+body.theme-fc .gauge-track { background: #e8e5dc; }
+
+/* Shortcut bar */
+body.theme-fc .shortcut-bar { background: #f5f5e9; border-top-color: #d8d5cc; }
+
+/* Hide CRT toggle in FC theme */
+body.theme-fc .crt-btn { display: none; }
+
+/* Suppress CRT scanlines even if toggled on */
+body.theme-fc.crt::after { display: none; }
