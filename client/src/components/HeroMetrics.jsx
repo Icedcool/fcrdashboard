@@ -4,6 +4,14 @@ import Tooltip from './Tooltip.jsx'
 function healthColor(h) {
   if (h === 'NOMINAL')  return 'var(--green)'
   if (h === 'DEGRADED') return 'var(--amber)'
+  if (h === 'UNKNOWN')  return 'var(--grey)'
+  return 'var(--red)'
+}
+
+function participationColor(pct) {
+  if (pct == null) return 'var(--grey)'
+  if (pct >= 95) return 'var(--green)'
+  if (pct >= 75) return 'var(--amber)'
   return 'var(--red)'
 }
 
@@ -18,20 +26,20 @@ export default function HeroMetrics({ summary }) {
     return () => clearInterval(t)
   }, [summary?.slotTime])
 
-  const adoption     = summary?.adoptionPct?.toFixed(1)   ?? '—'
-  const blockNumber  = summary?.blockNumber               ?? '—'
-  const syncHealth   = summary?.syncHealth                ?? '—'
+  const p            = summary?.participation
+  const blockNumber  = summary?.blockNumber ?? '—'
+  const syncHealth   = summary?.syncHealth  ?? '—'
 
   return (
     <div className="grid-4 section">
       <div className="tile">
-        <div className="tile-label">FCR ADOPTION <Tooltip text="% of active validators running FCR-enabled clients (Lodestar, Lighthouse). Needs ≥75% for fast confirmation to trigger network-wide." /></div>
-        <div className="tile-value" style={{ color: 'var(--green)' }}>{adoption}%</div>
-        <div className="tile-sub">{summary?.fcrValidators?.toLocaleString() ?? '—'} / {summary?.totalValidators?.toLocaleString() ?? '—'} validators</div>
+        <div className="tile-label">ATTESTATION PARTICIPATION <Tooltip text="% of this slot's expected attesting validators whose attestations were included on-chain, measured directly from attestation aggregation bitfields. The Fast Confirmation Rule requires ≥75% of stake honest and attesting." /></div>
+        <div className="tile-value" style={{ color: participationColor(p?.pct) }}>{p?.pct != null ? `${p.pct}%` : '—'}</div>
+        <div className="tile-sub">{p ? `${p.attesting.toLocaleString()} / ${p.committeeMembers.toLocaleString()} attesters · slot ${p.refSlot.toLocaleString()}` : '—'}</div>
       </div>
 
       <div className="tile">
-        <div className="tile-label">LAST FCR BLOCK <Tooltip text="Execution layer block number from the most recent beacon slot head. This is the block eligible for fast confirmation if the ≥75% attestation threshold is met." /></div>
+        <div className="tile-label">HEAD BLOCK <Tooltip text="Execution-layer block number at the current beacon head. Once clients ship FCR, a block like this would be confirmable ~13s after proposal via the 'safe' block tag." /></div>
         <div className="tile-value" style={{ fontSize: '1.2rem', color: 'var(--cyan)' }}>#{blockNumber.toLocaleString?.() ?? blockNumber}</div>
         <div className="tile-sub">slot {summary?.slot?.toLocaleString() ?? '—'}</div>
       </div>
@@ -43,9 +51,9 @@ export default function HeroMetrics({ summary }) {
       </div>
 
       <div className="tile">
-        <div className="tile-label">SYNC HEALTH <Tooltip text={"NOMINAL — participation ≥95%, FCR fully operational\nDEGRADED — participation 75–95%, FCR borderline\nUNSAFE — participation <75%, FCR threshold cannot be met, falls back to 2-epoch finality"} align="right" /></div>
+        <div className="tile-label">SYNC HEALTH <Tooltip text={"NOMINAL — participation ≥95%, FCR assumption comfortably met\nDEGRADED — participation 75–95%, fast confirmation possible but may be delayed by slots\nBELOW_FCR — participation <75%, the FCR threshold cannot be met; the chain still finalizes normally after ~2 epochs (~13 min)"} align="right" /></div>
         <div className="tile-value" style={{ fontSize: '1.2rem', color: healthColor(syncHealth) }}>{syncHealth}</div>
-        <div className="tile-sub">participation {summary?.attestationPct ?? '—'}%</div>
+        <div className="tile-sub">participation {p?.windowPct ?? '—'}% (last {p?.windowSlots ?? '—'} slots)</div>
       </div>
     </div>
   )

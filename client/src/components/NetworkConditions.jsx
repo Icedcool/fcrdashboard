@@ -1,24 +1,51 @@
 import Tooltip from './Tooltip.jsx'
 
-function healthColor(h) {
-  if (h === 'NOMINAL')  return 'var(--green)'
-  if (h === 'DEGRADED') return 'var(--amber)'
+function participationColor(pct) {
+  if (pct == null) return null
+  if (pct >= 95) return 'var(--green)'
+  if (pct >= 75) return 'var(--amber)'
   return 'var(--red)'
 }
 
-export default function NetworkConditions({ network }) {
+export default function NetworkConditions({ network, finality, totalValidators }) {
   const n = network ?? {}
-  const missedPct = n.totalSlots24h
-    ? ((n.missedSlots24h / n.totalSlots24h) * 100).toFixed(2)
-    : '0.00'
+  const missedPct = n.sampledSlots
+    ? ((n.missedSlots / n.sampledSlots) * 100).toFixed(1)
+    : null
 
   const rows = [
-    { key: 'PARTICIPATION RATE (7d avg)', tip: '7-day average of validators that submitted valid attestations per slot. A healthy network sustains ≥95%. Below 75% disables FCR.',                                        val: `${n.participationRate7d ?? '—'}%`, color: null },
-    { key: 'SYNC COMMITTEE HEALTH',       tip: 'Status of the 512-member sync committee that co-signs the chain head for light clients. NOMINAL = all members online and signing.',                                     val: n.syncCommitteeHealth ?? '—',       color: healthColor(n.syncCommitteeHealth) },
-    { key: 'MISSED SLOTS (24h)',          tip: 'Slots in the last 24 hours with no block produced (~7200 slots/day). A missed slot means the assigned proposer was offline or too slow. <0.1% is normal.',             val: `${n.missedSlots24h ?? '—'} / ${n.totalSlots24h ?? '—'} (${missedPct}%)`, color: null },
-    { key: 'REORG COUNT (24h)',           tip: 'Chain reorganizations in the last 24 hours. A reorg happens when a competing fork temporarily wins. Any reorg deeper than 1 slot is unusual on a healthy network.',    val: `${n.reorgCount24h ?? '—'}`,        color: (n.reorgCount24h > 0) ? 'var(--amber)' : null },
-    { key: 'CURRENT BASE REWARD',         tip: 'Per-validator issuance reward per epoch for correct attestations. Scales inversely with total validator count — more validators = smaller individual reward.',          val: n.baseReward ?? '—',                color: null },
-    { key: 'NETWORK LATENCY HEALTH',      tip: 'Derived from block propagation timing. NOMINAL = blocks reach >95% of nodes before the attestation deadline. DEGRADED = late blocks increasing missed attestations.',  val: n.latencyHealth ?? '—',             color: healthColor(n.latencyHealth) },
+    {
+      key: `PARTICIPATION (last ${n.windowSlots ?? '—'} slots)`,
+      tip: 'Average attestation participation over the sampled slot window, measured from on-chain aggregation bitfields. Healthy mainnet sustains ≥95%; below 75% the FCR cannot confirm.',
+      val: n.participationPct != null ? `${n.participationPct}%` : '—',
+      color: participationColor(n.participationPct),
+    },
+    {
+      key: 'MISSED SLOTS (window)',
+      tip: 'Slots in the sampled window with no block produced (beacon node returned 404) — proposer offline or too slow. RPC errors are counted separately and excluded.',
+      val: n.missedSlots != null
+        ? `${n.missedSlots} / ${n.sampledSlots} (${missedPct}%)${n.fetchErrors > 0 ? ` · ${n.fetchErrors} rpc errors` : ''}`
+        : '—',
+      color: n.missedSlots > 0 ? 'var(--amber)' : null,
+    },
+    {
+      key: 'FINALIZED EPOCH',
+      tip: "Latest finalized epoch from the beacon node's finality checkpoints. Finality trails the head by ~2 epochs (~13 min) — the delay FCR shortcuts.",
+      val: finality ? `${finality.finalizedEpoch.toLocaleString()} (${finality.finalizedSlotsBack} slots back)` : '—',
+      color: null,
+    },
+    {
+      key: 'JUSTIFIED EPOCH',
+      tip: 'Latest justified checkpoint (one step before finalization in Casper FFG).',
+      val: finality ? finality.justifiedEpoch.toLocaleString() : '—',
+      color: null,
+    },
+    {
+      key: 'ACTIVE VALIDATORS (EST)',
+      tip: "Estimated from attestation committee sizes: one slot's committee seats × 32 slots per epoch.",
+      val: totalValidators != null ? totalValidators.toLocaleString() : '—',
+      color: null,
+    },
   ]
 
   return (

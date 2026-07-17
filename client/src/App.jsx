@@ -71,7 +71,7 @@ export default function App() {
   return (
     <>
       <div className="dev-banner">
-        [ β ] IN DEVELOPMENT — data is experimental and may be inaccurate
+        [ β ] BETA — metrics derived from public Beacon API data · participation is measured on-chain · client shares are graffiti-based estimates
       </div>
 
       {showExplainer && <FcrExplainer onClose={dismissExplainer} />}
@@ -103,8 +103,17 @@ export default function App() {
         <LiveConfirmation summary={summary} />
 
         <div className="grid-2 section">
-          <ClientTable clients={summary?.clients ?? []} />
-          <NetworkConditions network={summary?.network} />
+          <ClientTable
+            clients={summary?.clients ?? []}
+            adoption={summary?.adoption}
+            totalValidators={summary?.totalValidators}
+            statusAsOf={summary?.clientStatusAsOf}
+          />
+          <NetworkConditions
+            network={summary?.network}
+            finality={summary?.finality}
+            totalValidators={summary?.totalValidators}
+          />
         </div>
 
         <AdoptionChart history={history ?? []} />

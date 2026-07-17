@@ -2,22 +2,21 @@ import { useState } from 'react'
 import Tooltip from './Tooltip.jsx'
 
 const COLS = [
-  { key: 'name',       label: 'CLIENT',      tip: null },
-  { key: 'version',    label: 'VERSION',     tip: null },
-  { key: 'fcrEnabled', label: 'FCR SUPPORT', tip: 'Whether this client has the Fast Confirmation Rule enabled. Detected from block proposer graffiti strings in recent beacon blocks.' },
-  { key: 'validators', label: 'VALIDATORS',  tip: 'Estimated validator count for this client, derived from its share of recently proposed blocks. Based on ~560k total active validators.' },
-  { key: 'pctOfSet',   label: '% OF SET',    tip: 'Share of the total active validator set running this client. FCR activates when the combined % of FCR-enabled clients exceeds 75%.' },
-  { key: 'status',     label: 'STATUS',      tip: 'LIVE — FCR is enabled in the current production release. DEV — FCR is in development or behind a feature flag, not yet activated by default.' },
+  { key: 'name',         label: 'CLIENT',          tip: null },
+  { key: 'fcrStage',     label: 'FCR STAGE',       tip: 'Implementation progress per client team (FCR breakout call #6, Apr 2026; spec merged Apr 16 2026 — consensus-specs#4747). No client has FCR in a production release yet.' },
+  { key: 'stageNote',    label: 'DETAIL',          tip: null },
+  { key: 'sampleBlocks', label: 'BLOCKS (SAMPLE)', tip: 'Blocks proposed by this client among the recently sampled blocks, identified by proposer graffiti. Most proposers set no identifying graffiti — this is a lower-bound sample, not a validator-share measurement.' },
+  { key: 'samplePct',    label: 'SAMPLE %',        tip: 'Share of the sampled blocks attributed to this client via graffiti.' },
 ]
 
-function statusColor(s) {
-  if (s === 'LIVE') return 'var(--green)'
-  if (s === 'DEV')  return 'var(--amber)'
+function stageColor(s) {
+  if (s === 'STAGING')                 return 'var(--green)'
+  if (s === 'POC' || s === 'IN_DEV')   return 'var(--amber)'
   return 'var(--grey)'
 }
 
-export default function ClientTable({ clients = [] }) {
-  const [sortKey, setSortKey]   = useState('validators')
+export default function ClientTable({ clients = [], adoption, totalValidators, statusAsOf }) {
+  const [sortKey, setSortKey]   = useState('sampleBlocks')
   const [sortDir, setSortDir]   = useState(-1)  // -1 = desc
 
   function handleSort(key) {
@@ -26,7 +25,7 @@ export default function ClientTable({ clients = [] }) {
   }
 
   const sorted = [...clients].sort((a, b) => {
-    let av = a[sortKey], bv = b[sortKey]
+    let av = a[sortKey] ?? '', bv = b[sortKey] ?? ''
     if (typeof av === 'string') av = av.toLowerCase()
     if (typeof bv === 'string') bv = bv.toLowerCase()
     if (av < bv) return sortDir
@@ -34,13 +33,12 @@ export default function ClientTable({ clients = [] }) {
     return 0
   })
 
-  const totalValidators = clients.reduce((s, c) => s + c.validators, 0)
-  const fcrValidators   = clients.filter(c => c.fcrEnabled).reduce((s, c) => s + c.validators, 0)
-  const fcrPct          = totalValidators ? ((fcrValidators / totalValidators) * 100).toFixed(1) : '0.0'
-
   return (
     <div className="section border-box">
-      <div className="section-header">CLIENT ADOPTION BREAKDOWN</div>
+      <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <span>CLIENT FCR IMPLEMENTATION STATUS</span>
+        {statusAsOf && <span style={{ color: 'var(--grey)', fontSize: '0.68rem', fontWeight: 400 }}>as of {statusAsOf}</span>}
+      </div>
       <div style={{ overflowX: 'auto' }}>
         <table className="data-table">
           <thead>
@@ -61,41 +59,34 @@ export default function ClientTable({ clients = [] }) {
           </thead>
           <tbody>
             <tr>
-              <td colSpan={6} style={{ padding: '0 10px', color: 'var(--grey)', fontSize: '0.72rem' }}>
+              <td colSpan={5} style={{ padding: '0 10px', color: 'var(--grey)', fontSize: '0.72rem' }}>
                 {'─'.repeat(80)}
               </td>
             </tr>
             {sorted.map(c => (
               <tr key={c.name}>
-                <td style={{ color: 'var(--green)' }}>{c.name}</td>
-                <td style={{ color: 'var(--grey)' }}>{c.version}</td>
-                <td style={{ color: c.fcrEnabled ? 'var(--green)' : 'var(--grey)' }}>
-                  {c.fcrEnabled ? '✓ ENABLED' : '✗ PENDING'}
-                </td>
-                <td>{c.validators.toLocaleString()}</td>
-                <td>{c.pctOfSet}%</td>
-                <td style={{ color: statusColor(c.status) }}>{c.status}</td>
+                <td style={{ color: c.name === 'UNKNOWN' ? 'var(--grey)' : 'var(--green)' }}>{c.name}</td>
+                <td style={{ color: stageColor(c.fcrStage) }}>{c.fcrStage ?? '—'}</td>
+                <td style={{ color: 'var(--grey)', fontSize: '0.75rem' }}>{c.stageNote}</td>
+                <td>{c.sampleBlocks}</td>
+                <td>{c.samplePct}%</td>
               </tr>
             ))}
             <tr>
-              <td colSpan={6} style={{ padding: '0 10px', color: 'var(--grey)', fontSize: '0.72rem' }}>
+              <td colSpan={5} style={{ padding: '0 10px', color: 'var(--grey)', fontSize: '0.72rem' }}>
                 {'─'.repeat(80)}
               </td>
             </tr>
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={2} style={{ color: 'var(--green-dim)' }}>FCR-ENABLED TOTAL</td>
-              <td></td>
-              <td>{fcrValidators.toLocaleString()}</td>
-              <td>{fcrPct}%</td>
+              <td colSpan={3} style={{ color: 'var(--green-dim)' }}>IDENTIFIED / SAMPLED <Tooltip text="Blocks whose proposer graffiti named a known consensus client, out of all blocks sampled this refresh." /></td>
+              <td>{adoption ? `${adoption.identified} / ${adoption.sampleSize}` : '—'}</td>
               <td></td>
             </tr>
             <tr>
-              <td colSpan={2} style={{ color: 'var(--grey)' }}>ACTIVE VALIDATOR SET</td>
-              <td></td>
-              <td>{totalValidators.toLocaleString()}</td>
-              <td>100.0%</td>
+              <td colSpan={3} style={{ color: 'var(--grey)' }}>ACTIVE VALIDATORS (EST) <Tooltip text="Estimated from attestation committee sizes: one slot's committee seats × 32 slots per epoch." /></td>
+              <td>{totalValidators?.toLocaleString() ?? '—'}</td>
               <td></td>
             </tr>
           </tfoot>
