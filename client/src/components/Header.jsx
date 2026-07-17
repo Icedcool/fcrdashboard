@@ -26,7 +26,7 @@ export default function Header({ summary, crtOn, onCrtToggle, onHelp, theme, onT
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap', gap: '8px' }}>
         <span style={{ fontSize: '0.78rem', color: 'var(--green-dim)' }}>
-          &gt; fast confirmation rule :: validator adoption monitor
+          &gt; fast confirmation rule :: network readiness monitor
         </span>
         <div style={{ display: 'flex', gap: '6px' }}>
           <button className={`btn ${crtOn ? 'active' : ''} crt-btn`} onClick={onCrtToggle}>

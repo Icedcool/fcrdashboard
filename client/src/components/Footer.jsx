@@ -22,14 +22,13 @@ export default function Footer({ lastUpdated, refreshInterval = 12 }) {
       <span>
         DATA:&nbsp;
         <a href="https://ethereum.github.io/beacon-APIs/" target="_blank" rel="noopener">Beacon API</a>
-        &nbsp;+&nbsp;
-        <a href="https://rated.network" target="_blank" rel="noopener">Rated.network</a>
-        &nbsp;+&nbsp;
-        <a href="https://ethpandaops.io/xatu" target="_blank" rel="noopener">ethPandaOps</a>
+        &nbsp;(<a href="https://ethereum.publicnode.com" target="_blank" rel="noopener">PublicNode</a>)
       </span>
       <span>
         SPEC:&nbsp;
         <a href="https://github.com/ethereum/consensus-specs/pull/4747" target="_blank" rel="noopener">consensus-specs#4747</a>
+        &nbsp;|&nbsp;
+        <a href="https://ethresear.ch/t/confirmation-rule-for-ethereum-pos/15454" target="_blank" rel="noopener">ethresear.ch</a>
         &nbsp;|&nbsp;
         <a href="https://fastconfirm.it/" target="_blank" rel="noopener">fastconfirm.it</a>
       </span>

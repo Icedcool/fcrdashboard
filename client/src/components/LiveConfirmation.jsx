@@ -11,7 +11,7 @@ function GaugeBar({ pct }) {
 
   return (
     <div className="gauge-wrap">
-      <div style={{ fontSize: '0.72rem', color: 'var(--green-dim)' }}>HONEST STAKE <Tooltip text="% of attesting validators running FCR-enabled clients. Must exceed 75% for the Fast Confirmation Rule to activate. Below that line, the network falls back to standard 2-epoch (~13 min) finality." align="right" /></div>
+      <div style={{ fontSize: '0.72rem', color: 'var(--green-dim)' }}>ATTESTING STAKE <Tooltip text="Measured % of expected attesters included on-chain — the observable proxy for the FCR's ≥75% honest-and-attesting stake assumption (<25% adversarial). Below the line, fast confirmation is impossible and the chain relies on ~13 min finality." align="right" /></div>
       <div style={{ fontSize: '1.1rem', fontWeight: 700, color: fillColor }}>{pct?.toFixed(1)}%</div>
       <div style={{ position: 'relative' }}>
         <div className="gauge-track">
@@ -37,13 +37,11 @@ function GaugeBar({ pct }) {
 
 export default function LiveConfirmation({ summary }) {
   const s = summary
+  const p = s?.participation
   const thresholdMet = s?.thresholdMet
-  const confirmSec = s?.confirmationMs ? (s.confirmationMs / 1000).toFixed(1) : '—'
-  const attestTotal = s?.totalValidators ?? 0
-  const attestActive = s ? Math.round(attestTotal * s.attestationPct / 100) : 0
 
   const statusColor = thresholdMet ? 'var(--green)' : 'var(--amber)'
-  const statusLabel = thresholdMet ? 'FAST_CONFIRMED ✓' : 'THRESHOLD_NOT_MET'
+  const statusLabel = thresholdMet == null ? '—' : thresholdMet ? 'THRESHOLD_MET ✓' : 'BELOW_THRESHOLD'
 
   return (
     <div className="section border-box" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 0 }}>
@@ -51,26 +49,30 @@ export default function LiveConfirmation({ summary }) {
         <div className="section-header">LIVE CONFIRMATION STATUS</div>
         <div className="kv-list">
           <div><span className="kv-key">SLOT: <Tooltip text="Current beacon chain slot number. One slot every 12 seconds, 32 slots per epoch." /></span><span className="kv-val">{s?.slot?.toLocaleString() ?? '—'}</span></div>
-          <div><span className="kv-key">BLOCK: <Tooltip text="Execution layer block hash included in this beacon slot's payload. This is the block that gets fast-confirmed." /></span><span className="kv-val" style={{ color: 'var(--cyan)' }}>{s?.blockHash ?? '—'}</span></div>
-          <div><span className="kv-key">STATUS: <Tooltip text="FAST_CONFIRMED — ≥75% of validators attested to this slot, single-slot confirmation achieved (~13s). THRESHOLD_NOT_MET — attestation rate below 75%, block will finalize via standard 2-epoch process (~13 min)." /></span><span className="kv-val" style={{ color: statusColor }}>{statusLabel}</span></div>
-          <div><span className="kv-key">CONFIRMATION: <Tooltip text="Time from slot start until fast confirmation is achievable. Under normal network conditions this is ~13 seconds (one slot). Increases if attestations arrive late." /></span><span className="kv-val">{confirmSec}s</span></div>
+          <div><span className="kv-key">BLOCK: <Tooltip text="Execution layer block hash and number included in this beacon slot's payload. Under FCR, this is the kind of block the 'safe' tag would return once fast-confirmed." /></span><span className="kv-val" style={{ color: 'var(--cyan)' }}>{s?.blockHash ?? '—'}{s?.blockNumber ? ` (#${s.blockNumber.toLocaleString()})` : ''}</span></div>
+          <div><span className="kv-key">STATUS: <Tooltip text="Whether measured participation meets the ≥75% threshold the FCR requires. Note: no consensus client has FCR enabled in production yet — this shows whether the network currently satisfies the rule's participation assumption." /></span><span className="kv-val" style={{ color: statusColor }}>{statusLabel}</span></div>
+          <div><span className="kv-key">CONFIRMATION TARGET: <Tooltip text="Theoretical FCR time-to-confirmation: one 12s slot plus propagation ≈13s, vs ~13 minutes for 2-epoch finality. An adversary >5% of stake can delay confirmation (15% → +1 slot, 18% → +2, 20% → +3)." /></span><span className="kv-val">~13s (1 slot) vs ~13 min finality</span></div>
           <div>
-            <span className="kv-key">ATTESTATIONS: <Tooltip text="Estimated number of validators that have attested to this slot out of the total active set. Fast confirmation requires ≥75% of the active validator set to attest." /></span>
+            <span className="kv-key">ATTESTATIONS: <Tooltip text="Attesting validators vs expected committee seats for the measured slot (head−1), read from on-chain aggregation bitfields." /></span>
             <span className="kv-val">
-              {attestActive.toLocaleString()} / {attestTotal.toLocaleString()}&nbsp;
-              <span style={{ color: 'var(--grey)' }}>({s?.attestationPct ?? '—'}%)</span>
+              {p ? (
+                <>
+                  {p.attesting.toLocaleString()} / {p.committeeMembers.toLocaleString()}&nbsp;
+                  <span style={{ color: 'var(--grey)' }}>({p.pct}%)</span>
+                </>
+              ) : '—'}
             </span>
           </div>
           <div>
-            <span className="kv-key">THRESHOLD MET: <Tooltip text="YES when FCR-enabled validators represent ≥75% of the attesting set, enabling single-slot finality. Currently requires Lodestar + Lighthouse combined adoption to cross 75%." /></span>
+            <span className="kv-key">THRESHOLD MET: <Tooltip text="YES when ≥75% of expected attesters for the measured slot are on-chain — the FCR's participation assumption. Independent of which clients proposers run." /></span>
             <span className="kv-val" style={{ color: thresholdMet ? 'var(--green)' : 'var(--amber)' }}>
               {thresholdMet == null ? '—' : thresholdMet ? 'YES' : 'NO'}
-              {!thresholdMet && <span style={{ color: 'var(--grey)' }}>&nbsp;&nbsp;[needs ≥75%]</span>}
+              {thresholdMet === false && <span style={{ color: 'var(--grey)' }}>&nbsp;&nbsp;[needs ≥75%]</span>}
             </span>
           </div>
         </div>
       </div>
-      <GaugeBar pct={s?.attestationPct ?? 0} />
+      <GaugeBar pct={p?.pct ?? 0} />
     </div>
   )
 }
